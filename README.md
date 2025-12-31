@@ -1,40 +1,53 @@
-# Fresh UI Bundles Monorepo (Fresh v2.2 + Vite + Tailwind)
+# Fresh Paint (monorepo)
 
-This repo demonstrates a **runtime‑swappable** UI system for Fresh where users can:
+Fresh Paint is a small UI "bundle stack" system for Deno + Preact apps.
 
-- stack **bundle layers** arbitrarily (base → ocean → holiday, etc.)
-- switch **themes** and **layouts** at runtime (cookie‑backed)
-- let designers ship **only TSX + CSS** in bundle packages (no code‑gen)
+It's split into:
 
-It includes:
+- **UI kit** (`packages/ui-kit`): types + runtime + middleware that loads bundles, merges
+  registries, and serves CSS.
+- **Bundles** (`packages/bundle-*`): themed CSS + optional layouts/primitives/widgets you can stack
+  to compose a UI.
 
-- `packages/ui-kit/` - the middleware + runtime registry + CSS proxy
-- `packages/bundle-base/` - base primitives, themes, layouts
-- `packages/bundle-ocean/` - overrides + additional theme/layout
-- `packages/bundle-holiday/` - overrides + additional theme/layout
-- `apps/demo/` - a Fresh app that wires everything together
+## Core ideas
 
-## Quickstart
+### Bundles
 
-From the repo root:
+A bundle is a module that exports a `UiBundle` (usually via `defineBundle`). Bundles can provide:
 
-```bash
-cd apps/demo
-deno task dev
-```
+- `globalCss`: always applied when the bundle is enabled
+- `themes`: named theme definitions (with optional `extends`)
+- `layouts`: layout components (e.g. app vs marketing)
+- `primitives`: shared building blocks (e.g. Button, Card)
+- `widgets`: higher-level components (e.g. Hero)
 
-Then open the printed URL (usually `http://localhost:5173`).
+### Stack order (override semantics)
 
-## Why a CSS proxy?
+You enable a list of bundle ids called the **stack**.
 
-Bundles provide CSS as URLs (including `file:` URLs during local dev). The app injects `<link>` tags
-that point at `/ui/css/<id>.css`. The server resolves `<id>` → real URL and serves the stylesheet
-with caching headers.
+When registries are merged, **later bundles in the stack override earlier bundles** for the same
+keys (layouts, themes, primitives, widgets). Example: with stack `["base", "ocean"]`, any `ocean`
+component with the same registry key wins.
 
-This keeps bundles **no-build** (plain CSS files) and keeps the browser on same-origin CSS.
+### Themes
 
-## Notes
+Themes are identified by id (e.g. `light`, `dark`, `ocean`, `holiday`). A theme can extend another
+theme id; the runtime applies CSS from the base theme chain, then the chosen theme, in order.
 
-- Deno permissions in dev are broad (`-A`) because Vite, file reads, and optional remote CSS fetches
-  can be involved.
-- In production you can tighten permissions to `--allow-net --allow-read`.
+### Layout selection
+
+The runtime chooses one layout id (e.g. `app`, `marketing`) and exposes it as `ui.prefs.layout`.
+Layout components receive `{ ui, children }`.
+
+## Packages
+
+- `@ggpwnkthx/fresh-paint` (exported from `packages/ui-kit`)
+- `@ggpwnkthx/fresh-paint/bundle/base`
+- `@ggpwnkthx/fresh-paint/bundle/ocean`
+- `@ggpwnkthx/fresh-paint/bundle/holiday`
+
+## Repo tasks
+
+- `deno task dev` – run the demo app
+- `deno task test` – run tests
+- `deno task check` – fmt + lint + typecheck + tests

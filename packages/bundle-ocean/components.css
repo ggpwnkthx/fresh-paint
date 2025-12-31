@@ -1,37 +1,25 @@
-.ui-nav {
-  background:
+:root {
+  --ui-nav-bg:
     radial-gradient(
-      1200px 240px at 20% 0%,
-      color-mix(in oklab, var(--ui-accent), transparent 72%),
-      transparent
-    ),
-    linear-gradient(180deg, var(--ui-surface-2), transparent);
-}
+    1200px 240px at 20% 0%,
+    color-mix(in oklab, var(--ui-accent), transparent 72%),
+    transparent
+  ), linear-gradient(180deg, var(--ui-surface-2), transparent);
 
-.ui-pill {
-  border-color: color-mix(in oklab, var(--ui-accent), var(--ui-border) 70%);
-}
+  --ui-hero-bg:
+    radial-gradient(
+    1200px 700px at 15% 0%,
+    color-mix(in oklab, var(--ui-accent), transparent 60%),
+    transparent
+  ), radial-gradient(
+    1000px 700px at 80% 40%,
+    color-mix(in oklab, var(--ui-accent-2), transparent 70%),
+    transparent
+  ), var(--ui-surface);
 
-.ui-btn[data-variant="primary"] {
-  background: radial-gradient(
+  --ui-btn-primary-bg: radial-gradient(
     90% 180% at 20% 10%,
     color-mix(in oklab, var(--ui-accent), white 40%),
     var(--ui-accent)
   );
-  border-color: color-mix(in oklab, var(--ui-accent), white 30%);
-}
-
-.ui-hero {
-  background:
-    radial-gradient(
-      1200px 700px at 15% 0%,
-      color-mix(in oklab, var(--ui-accent), transparent 60%),
-      transparent
-    ),
-    radial-gradient(
-    1000px 700px at 80% 40%,
-    color-mix(in oklab, var(--ui-accent-2), transparent 70%),
-    transparent
-  ),
-    var(--ui-surface);
 }

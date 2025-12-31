@@ -1,6 +1,6 @@
 import type { ComponentChildren, FunctionComponent } from "preact";
-import { define } from "@/lib/define.ts";
 import PreferencesPicker from "@/islands/PreferencesPicker.tsx";
+import { define } from "../main.tsx";
 
 type HeroProps = {
   title: string;
@@ -42,7 +42,7 @@ export default define.page(({ state }) => {
       <div style={col}>
         {Card
           ? (
-            <Card title="What you’re looking at">
+            <Card title="What you're looking at">
               <p>
                 The server merges registries from the selected layer stack. CSS from each layer is
                 included in order, and later layers override earlier ones.
