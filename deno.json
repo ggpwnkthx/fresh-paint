@@ -1,0 +1,25 @@
+{
+  "workspace": [
+    "./packages/*",
+    "./apps/*"
+  ],
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "dev": "cd apps/demo && deno task dev",
+    "build": "cd apps/demo && deno task build",
+    "start": "cd apps/demo && deno task start",
+    "test": "deno test -A"
+  },
+  "fmt": {
+    "lineWidth": 100,
+    "semiColons": true,
+    "singleQuote": false
+  },
+  "lint": {
+    "rules": {
+      "tags": [
+        "recommended"
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+/* Holiday overrides — loaded AFTER base and ocean if stacked above them. */
+.ui-card {
+  border-color: color-mix(in oklab, var(--ui-accent), var(--ui-border) 75%);
+  background:
+    radial-gradient(
+      600px 300px at 80% 0%,
+      color-mix(in oklab, var(--ui-accent-2), transparent 70%),
+      transparent
+    ),
+    var(--ui-surface);
+}
+
+.ui-brand span:first-child {
+  filter: drop-shadow(0 6px 18px color-mix(in oklab, var(--ui-accent), transparent 70%));
+}
+
+.ui-btn:hover {
+  transform: translateY(-2px) rotate(-0.2deg);
+}

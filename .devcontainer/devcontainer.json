@@ -1,0 +1,17 @@
+{
+  "name": "@aporia",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "justjavac.vscode-deno-extensionpack",
+        "vscode-icons-team.vscode-icons",
+        "AndyGeek.context-code",
+        "bradlc.vscode-tailwindcss"
+      ]
+    }
+  }
+}

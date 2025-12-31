@@ -1,0 +1,5 @@
+/* Ocean tint for the existing 'light' theme */
+html[data-theme="light"] {
+  --ui-accent: #0284c7; /* sky-600 */
+  --ui-accent-2: #14b8a6; /* teal-500 */
+}

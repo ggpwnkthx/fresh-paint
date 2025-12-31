@@ -1,0 +1,15 @@
+{
+  "name": "@demo/bundle-holiday",
+  "version": "0.1.0",
+  "exports": "./mod.ts",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
+  },
+  "imports": {
+    "@repo/ui-kit": "../ui-kit/mod.ts",
+    "preact": "npm:preact@^10"
+  }
+}
