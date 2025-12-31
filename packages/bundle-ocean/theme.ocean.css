@@ -1,14 +1,10 @@
-/* A dedicated 'ocean' theme (extends light) */
 html[data-theme="ocean"] {
   --ui-bg: #ecfeff;
   --ui-fg: #042f2e;
   --ui-muted: #115e59;
-
   --ui-surface: rgba(255, 255, 255, 0.78);
   --ui-surface-2: rgba(255, 255, 255, 0.92);
-
   --ui-border: rgba(15, 118, 110, 0.20);
-
   --ui-accent: #0284c7;
   --ui-accent-2: #14b8a6;
 }

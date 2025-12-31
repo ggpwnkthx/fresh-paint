@@ -1,18 +1,17 @@
-import type { FunctionComponent } from "preact";
 import type { UiRuntime } from "@repo/ui-kit";
 
-export interface HeroProps {
+export type HeroProps = {
   title: string;
   subtitle: string;
   ui: UiRuntime;
-}
-
-export const Hero: FunctionComponent<HeroProps> = (props) => {
-  return (
-    <div class="ui-hero">
-      <h1>❄️ {props.title}</h1>
-      <p>{props.subtitle}</p>
-      <p class="ui-pill">Tip: stack me above ocean/base to override the Hero widget.</p>
-    </div>
-  );
+  ctaHref?: string;
+  ctaLabel?: string;
 };
+
+export const Hero = ({ title, subtitle }: HeroProps) => (
+  <div class="ui-hero">
+    <h1>❄️ {title}</h1>
+    <p>{subtitle}</p>
+    <span class="ui-pill">Stack above base/ocean to override Hero.</span>
+  </div>
+);

@@ -1,7 +1,6 @@
 import type {
   BundleId,
   BundleLoader,
-  LayoutId,
   ThemeId,
   UiBundle,
   UiPreferences,
@@ -9,185 +8,164 @@ import type {
   UiRuntime,
 } from "./types.ts";
 import { CssProxy } from "./css_proxy.ts";
-import { decodePrefsCookie, encodePrefsCookie, parseCookieHeader } from "./cookies.ts";
+import {
+  decodePrefsCookie,
+  encodePrefsCookie,
+  parseCookieHeader,
+  setCookieHeader,
+} from "./cookies.ts";
 
 export interface UiKitOptions {
   catalog: Record<BundleId, BundleLoader>;
   defaults: UiPreferences;
-
   cookieName?: string;
-
-  /** Where proxied CSS will be served from. */
   cssProxyBasePath?: string;
-  /** Allow proxying file: URLs (useful for local monorepos). */
   allowFileCss?: boolean;
 }
 
-export function createUiKit(opts: UiKitOptions) {
-  const cookieName = opts.cookieName ?? "ui";
-  const cssProxy = new CssProxy({
-    basePath: opts.cssProxyBasePath ?? "/ui/css",
-    allowFileUrls: opts.allowFileCss ?? false,
-  });
+export function createUiKit({
+  catalog,
+  defaults,
+  cookieName = "ui",
+  cssProxyBasePath = "/ui/css",
+  allowFileCss = false,
+}: UiKitOptions) {
+  const cssProxy = new CssProxy({ basePath: cssProxyBasePath, allowFileUrls: allowFileCss });
 
-  async function resolve(req: Request): Promise<UiRuntime> {
+  const resolve = async (req: Request): Promise<UiRuntime> => {
     const warnings: string[] = [];
+    const cookie = parseCookieHeader(req.headers.get("cookie"))[cookieName];
+    const raw = (cookie ? decodePrefsCookie(cookie) : null) ?? defaults;
 
-    const cookies = parseCookieHeader(req.headers.get("cookie"));
-    const parsedPrefs = cookies[cookieName] ? decodePrefsCookie(cookies[cookieName]) : null;
+    const stack = pickStack(raw.stack, defaults.stack, catalog, warnings);
+    const bundles = await loadBundles(stack, catalog, warnings);
+    const registry = mergeRegistry(stack, bundles);
 
-    const rawPrefs: UiPreferences = parsedPrefs ?? opts.defaults;
+    const theme = pickId("theme", raw.theme, registry.themes, defaults.theme, warnings);
+    const layout = pickId("layout", raw.layout, registry.layouts, defaults.layout, warnings);
 
-    // Validate requested stack; if it collapses to empty, fall back to defaults (validated too).
-    let { stack: stack, stackWarnings } = normalizeStack(rawPrefs.stack, opts.catalog);
-    warnings.push(...stackWarnings);
+    const prefs: UiPreferences = { stack, theme, layout };
+    const css = await proxyCss(cssProxy, collectCss(theme, stack, bundles, registry));
+    return { prefs, registry, css, warnings };
+  };
 
-    if (stack.length === 0) {
-      const fallback = normalizeStack(opts.defaults.stack, opts.catalog);
-      stack = fallback.stack;
-      warnings.push(...fallback.stackWarnings);
+  const setPreferencesCookie = (headers: Headers, prefs: UiPreferences) =>
+    setCookieHeader(headers, { name: cookieName, value: encodePrefsCookie(prefs) });
+
+  return { cookieName, cssProxy, resolve, setPreferencesCookie };
+}
+
+function pickStack(
+  requested: BundleId[],
+  fallback: BundleId[],
+  catalog: Record<BundleId, BundleLoader>,
+  warnings: string[],
+): BundleId[] {
+  const clean = (ids: BundleId[]) => {
+    const seen = new Set<BundleId>();
+    const out: BundleId[] = [];
+    for (const id of ids) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      if (!catalog[id]) warnings.push(`Unknown bundle id ignored: "${id}"`);
+      else out.push(id);
     }
+    return out;
+  };
 
-    const bundles: Partial<Record<BundleId, UiBundle>> = {};
-    for (const id of stack) {
-      const loader = opts.catalog[id];
+  const a = clean(requested);
+  if (a.length) return a;
+  warnings.push("Requested stack was empty after validation.");
+  return clean(fallback);
+}
+
+type LoadedBundle = {
+  id: BundleId;
+  bundle?: UiBundle;
+  warn?: string;
+};
+
+async function loadBundles(
+  stack: BundleId[],
+  catalog: Record<BundleId, BundleLoader>,
+  warnings: string[],
+): Promise<Partial<Record<BundleId, UiBundle>>> {
+  const loaded: LoadedBundle[] = await Promise.all(
+    stack.map(async (id): Promise<LoadedBundle> => {
+      const loader = catalog[id];
       if (!loader) {
-        // Should not happen after normalizeStack, but stay safe under noUncheckedIndexedAccess.
-        warnings.push(`Unknown bundle id ignored at load time: "${id}"`);
-        continue;
+        // Should be prevented by pickStack(), but keep this for safety and for strict indexing.
+        return { id, warn: `Unknown bundle id ignored: "${id}"` };
       }
 
       try {
-        bundles[id] = await loader();
-      } catch (err) {
-        warnings.push(`Failed to load bundle "${id}": ${(err as Error).message}`);
+        return { id, bundle: await loader() };
+      } catch (e) {
+        return {
+          id,
+          warn: `Failed to load bundle "${id}": ${(e as Error).message}`,
+        };
       }
-    }
+    }),
+  );
 
-    const registry = mergeRegistryInOrder(stack, bundles);
-
-    const theme = normalizeTheme(rawPrefs.theme, registry, opts.defaults.theme, warnings);
-    const layout = normalizeLayout(rawPrefs.layout, registry, opts.defaults.layout, warnings);
-
-    const prefs: UiPreferences = { stack, theme, layout };
-
-    const cssResources = collectCss(prefs.theme, stack, bundles, registry);
-    const cssLinks = await proxyCss(cssProxy, cssResources);
-
-    return {
-      prefs,
-      registry,
-      css: cssLinks,
-      warnings,
-    };
+  const out: Partial<Record<BundleId, UiBundle>> = {};
+  for (const r of loaded) {
+    if (r.warn) warnings.push(r.warn);
+    if (r.bundle) out[r.id] = r.bundle;
   }
-
-  function setPreferencesCookie(headers: Headers, prefs: UiPreferences): void {
-    const value = encodePrefsCookie(prefs);
-    // Prefer small cookie values. If you exceed cookie limits, move storage server-side.
-    headers.append(
-      "Set-Cookie",
-      `${cookieName}=${value}; Path=/; HttpOnly; SameSite=Lax`,
-    );
-  }
-
-  return {
-    cookieName,
-    cssProxy,
-    resolve,
-    setPreferencesCookie,
-  };
+  return out;
 }
 
-function normalizeStack(
-  requested: BundleId[],
-  catalog: Record<BundleId, BundleLoader>,
-): { stack: BundleId[]; stackWarnings: string[] } {
-  const seen = new Set<string>();
-  const stack: BundleId[] = [];
-  const warnings: string[] = [];
-
-  for (const id of requested) {
-    if (seen.has(id)) continue;
-    seen.add(id);
-    if (!catalog[id]) {
-      warnings.push(`Unknown bundle id ignored: "${id}"`);
-      continue;
-    }
-    stack.push(id);
-  }
-
-  if (stack.length === 0) warnings.push("Requested stack was empty after validation.");
-
-  return { stack, stackWarnings: warnings };
-}
-
-function mergeRegistryInOrder(
+function mergeRegistry(
   stack: BundleId[],
   bundles: Partial<Record<BundleId, UiBundle>>,
 ): UiRegistry {
-  const themes: UiRegistry["themes"] = {};
-  const layouts: UiRegistry["layouts"] = {};
-  const primitives: UiRegistry["primitives"] = {};
-  const widgets: UiRegistry["widgets"] = {};
+  const out: UiRegistry = { bundles: {}, themes: {}, layouts: {}, primitives: {}, widgets: {} };
 
   for (const id of stack) {
     const b = bundles[id];
     if (!b) continue;
 
-    if (b.themes) Object.assign(themes, b.themes);
-    if (b.layouts) Object.assign(layouts, b.layouts);
-    if (b.primitives) Object.assign(primitives, b.primitives);
-    if (b.widgets) Object.assign(widgets, b.widgets);
+    out.bundles[id] = b;
+    if (b.themes) Object.assign(out.themes, b.themes);
+    if (b.layouts) Object.assign(out.layouts, b.layouts);
+    if (b.primitives) Object.assign(out.primitives, b.primitives);
+    if (b.widgets) Object.assign(out.widgets, b.widgets);
   }
 
-  // Registry also exposes loaded bundles.
-  const bundleSay: Record<BundleId, UiBundle> = {};
-  for (const [id, b] of Object.entries(bundles)) {
-    if (b) bundleSay[id] = b;
-  }
-
-  return { bundles: bundleSay, themes, layouts, primitives, widgets };
+  return out;
 }
 
-function normalizeTheme(
-  requested: ThemeId,
-  registry: UiRegistry,
-  fallback: ThemeId,
+function pickId<T extends string>(
+  kind: "theme" | "layout",
+  requested: T,
+  map: Record<string, unknown>,
+  fallback: T,
   warnings: string[],
-): ThemeId {
-  if (registry.themes[requested]) return requested;
-  if (registry.themes[fallback]) {
-    warnings.push(`Unknown theme "${requested}", falling back to "${fallback}".`);
+): T {
+  if (map[requested]) return requested;
+  if (map[fallback]) {
+    warnings.push(`Unknown ${kind} "${requested}", falling back to "${fallback}".`);
     return fallback;
   }
-  const first = Object.keys(registry.themes)[0];
+  const first = Object.keys(map)[0] as T | undefined;
   if (first) {
-    warnings.push(`Unknown theme "${requested}", falling back to first theme "${first}".`);
+    warnings.push(`Unknown ${kind} "${requested}", falling back to "${first}".`);
     return first;
   }
-  warnings.push(`No themes registered; using "${requested}" anyway.`);
+  warnings.push(`No ${kind}s registered; using "${requested}".`);
   return requested;
 }
 
-function normalizeLayout(
-  requested: LayoutId,
-  registry: UiRegistry,
-  fallback: LayoutId,
-  warnings: string[],
-): LayoutId {
-  if (registry.layouts[requested]) return requested;
-  if (registry.layouts[fallback]) {
-    warnings.push(`Unknown layout "${requested}", falling back to "${fallback}".`);
-    return fallback;
+function themeLayers(theme: ThemeId, themes: UiRegistry["themes"]): ThemeId[] {
+  const out: ThemeId[] = [];
+  const seen = new Set<ThemeId>();
+  for (let cur: ThemeId | undefined = theme; cur && !seen.has(cur); cur = themes[cur]?.extends) {
+    seen.add(cur);
+    out.unshift(cur);
   }
-  const first = Object.keys(registry.layouts)[0];
-  if (first) {
-    warnings.push(`Unknown layout "${requested}", falling back to first layout "${first}".`);
-    return first;
-  }
-  warnings.push(`No layouts registered; using "${requested}" anyway.`);
-  return requested;
+  return out;
 }
 
 function collectCss(
@@ -197,42 +175,11 @@ function collectCss(
   registry: UiRegistry,
 ): Array<{ url: string; media?: string }> {
   const out: Array<{ url: string; media?: string }> = [];
-
-  // global CSS (stack order)
-  for (const id of stack) {
-    const b = bundles[id];
-    if (!b?.globalCss) continue;
-    for (const css of b.globalCss) out.push(css);
+  for (const id of stack) out.push(...(bundles[id]?.globalCss ?? []));
+  for (const t of themeLayers(theme, registry.themes)) {
+    for (const id of stack) out.push(...(bundles[id]?.themes?.[t]?.css ?? []));
   }
-
-  // theme CSS (base → derived; then stack order within each theme layer)
-  const chain = themeChain(theme, registry).reverse();
-  for (const themeId of chain) {
-    for (const id of stack) {
-      const b = bundles[id];
-      const def = b?.themes?.[themeId];
-      if (!def) continue;
-      for (const css of def.css) out.push(css);
-    }
-  }
-
   return out;
-}
-
-function themeChain(theme: ThemeId, registry: UiRegistry): ThemeId[] {
-  const chain: ThemeId[] = [];
-  const seen = new Set<ThemeId>();
-
-  let cur: ThemeId | undefined = theme;
-  while (cur && !seen.has(cur)) {
-    seen.add(cur);
-    chain.push(cur);
-
-    const next: ThemeId | undefined = registry.themes[cur]?.extends;
-    cur = next;
-  }
-
-  return chain;
 }
 
 async function proxyCss(

@@ -1,0 +1,4 @@
+html[data-theme="light"] {
+  --ui-accent: #0284c7;
+  --ui-accent-2: #14b8a6;
+}

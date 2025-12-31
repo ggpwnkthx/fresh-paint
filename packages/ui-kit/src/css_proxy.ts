@@ -2,20 +2,19 @@ import { fromFileUrl } from "@std/path";
 import { base64UrlEncode } from "./cookies.ts";
 
 export interface CssProxyOptions {
-  /** Route prefix. Example: `/ui/css` */
   basePath: string;
-  /** Allow proxying file: URLs. Useful in local dev / monorepos. */
   allowFileUrls?: boolean;
-  /** Cache remote CSS responses for N seconds (in-memory). */
   remoteCacheSeconds?: number;
 }
 
-type RemoteCacheEntry = {
+type RemoteEntry = {
   expiresAt: number;
   status: number;
-  headers: Headers;
+  headers: [string, string][];
   body: Uint8Array;
 };
+
+const te = new TextEncoder();
 
 export class CssProxy {
   readonly basePath: string;
@@ -23,23 +22,19 @@ export class CssProxy {
   readonly remoteCacheSeconds: number;
 
   #idToUrl = new Map<string, string>();
-  #urlToId = new Map<string, string>();
-  #remoteCache = new Map<string, RemoteCacheEntry>();
+  #remote = new Map<string, RemoteEntry>();
 
-  constructor(opts: CssProxyOptions) {
-    this.basePath = opts.basePath.replace(/\/$/, "");
-    this.allowFileUrls = opts.allowFileUrls ?? false;
-    this.remoteCacheSeconds = opts.remoteCacheSeconds ?? 300;
+  constructor({ basePath, allowFileUrls = false, remoteCacheSeconds = 300 }: CssProxyOptions) {
+    this.basePath = basePath.replace(/\/$/, "");
+    this.allowFileUrls = allowFileUrls;
+    this.remoteCacheSeconds = remoteCacheSeconds;
   }
 
-  /** Returns the stable proxy href (`/ui/css/<id>.css`) for a given CSS source URL. */
   async register(sourceUrl: string): Promise<{ id: string; href: string }> {
-    const existing = this.#urlToId.get(sourceUrl);
-    if (existing) return { id: existing, href: this.href(existing) };
-
     const id = await hashId(sourceUrl);
+    const prev = this.#idToUrl.get(id);
+    if (prev && prev !== sourceUrl) throw new Error("CSS proxy id collision");
     this.#idToUrl.set(id, sourceUrl);
-    this.#urlToId.set(sourceUrl, id);
     return { id, href: this.href(id) };
   }
 
@@ -51,53 +46,52 @@ export class CssProxy {
     return this.#idToUrl.get(id);
   }
 
-  /**
-   * A handler you can call from a Fresh route.
-   *
-   * It expects `req.url` to match `${basePath}/<id>.css`.
-   */
-  async handle(req: Request): Promise<Response> {
-    const url = new URL(req.url);
-    const idWithExt = url.pathname.slice(this.basePath.length + 1);
-    const id = idWithExt.endsWith(".css") ? idWithExt.slice(0, -4) : idWithExt;
+  handle(req: Request): Promise<Response> {
+    const u = new URL(req.url);
+    const id = u.pathname.slice(this.basePath.length + 1).replace(/\.css$/, "");
+    const source = this.lookup(id);
+    if (!source) return Promise.resolve(new Response("Unknown stylesheet id", { status: 404 }));
 
-    const sourceUrl = this.lookup(id);
-    if (!sourceUrl) return new Response("Unknown stylesheet id", { status: 404 });
-
-    const parsed = new URL(sourceUrl);
-
-    if (parsed.protocol === "file:") {
-      if (!this.allowFileUrls) return new Response("file: CSS not allowed", { status: 403 });
-      return await this.#serveFile(parsed);
+    let target: URL;
+    try {
+      target = new URL(source, u.origin);
+    } catch {
+      return Promise.resolve(new Response("Invalid CSS URL", { status: 400 }));
     }
 
-    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-      return await this.#serveRemote(parsed.toString());
-    }
+    if (
+      (target.protocol === "http:" || target.protocol === "https:") &&
+      target.origin === u.origin &&
+      target.pathname.startsWith(this.basePath)
+    ) return Promise.resolve(new Response("Refusing to proxy a proxied CSS URL", { status: 400 }));
 
-    return new Response("Unsupported CSS URL scheme", { status: 400 });
+    if (target.protocol === "file:") {
+      return this.allowFileUrls
+        ? this.#serveFile(target)
+        : Promise.resolve(new Response("file: CSS not allowed", { status: 403 }));
+    }
+    if (target.protocol === "http:" || target.protocol === "https:") {
+      return this.#serveRemote(target.toString());
+    }
+    return Promise.resolve(new Response("Unsupported CSS URL scheme", { status: 400 }));
   }
 
   async #serveFile(fileUrl: URL): Promise<Response> {
-    const path = fromFileUrl(fileUrl);
-
-    let file: Deno.FsFile;
     try {
-      file = await Deno.open(path, { read: true });
-    } catch (err) {
-      return new Response(`Failed to read CSS file: ${(err as Error).message}`, { status: 404 });
+      const file = await Deno.open(fromFileUrl(fileUrl), { read: true });
+      return new Response(file.readable, {
+        headers: {
+          "content-type": "text/css; charset=utf-8",
+          "cache-control": "no-cache",
+        },
+      });
+    } catch (e) {
+      return new Response(`Failed to read CSS file: ${(e as Error).message}`, { status: 404 });
     }
-
-    const headers = new Headers({
-      "content-type": "text/css; charset=utf-8",
-      "cache-control": "no-cache",
-    });
-
-    return new Response(file.readable, { status: 200, headers });
   }
 
   async #serveRemote(sourceUrl: string): Promise<Response> {
-    const cached = this.#remoteCache.get(sourceUrl);
+    const cached = this.#remote.get(sourceUrl);
     if (cached && Date.now() < cached.expiresAt) {
       return new Response(cached.body.slice(), { status: cached.status, headers: cached.headers });
     }
@@ -109,21 +103,19 @@ export class CssProxy {
     headers.set("content-type", "text/css; charset=utf-8");
     headers.set("cache-control", `public, max-age=${this.remoteCacheSeconds}`);
 
-    this.#remoteCache.set(sourceUrl, {
+    const entry: RemoteEntry = {
       expiresAt: Date.now() + this.remoteCacheSeconds * 1000,
       status: res.status,
-      headers,
+      headers: Array.from(headers.entries()),
       body,
-    });
+    };
+    this.#remote.set(sourceUrl, entry);
 
-    return new Response(body.slice(), { status: res.status, headers });
+    return new Response(body.slice(), { status: entry.status, headers });
   }
 }
 
 async function hashId(input: string): Promise<string> {
-  const bytes = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  // 12 bytes (~16 base64url chars) is plenty for demo; increase if you want lower collision risk.
-  const short = new Uint8Array(digest).slice(0, 12);
-  return base64UrlEncode(short);
+  const digest = await crypto.subtle.digest("SHA-256", te.encode(input));
+  return base64UrlEncode(new Uint8Array(digest).subarray(0, 12));
 }

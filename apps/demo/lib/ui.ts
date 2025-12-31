@@ -1,14 +1,11 @@
 import { createUiKit, moduleBundle } from "@repo/ui-kit";
 
-function fileUrl(rel: string): string {
-  return new URL(rel, import.meta.url).href;
-}
-
 export const uiKit = createUiKit({
   catalog: {
-    base: moduleBundle(fileUrl("../../packages/bundle-base/mod.ts")),
-    ocean: moduleBundle(fileUrl("../../packages/bundle-ocean/mod.ts")),
-    holiday: moduleBundle(fileUrl("../../packages/bundle-holiday/mod.ts")),
+    // Importer form => Vite can analyze and chunk these correctly.
+    base: moduleBundle(() => import("@repo/bundle-base/mod.ts"), "bundle-base"),
+    ocean: moduleBundle(() => import("@repo/bundle-ocean/mod.ts"), "bundle-ocean"),
+    holiday: moduleBundle(() => import("@repo/bundle-holiday/mod.ts"), "bundle-holiday"),
   },
   defaults: {
     stack: ["base", "ocean", "holiday"],

@@ -1,14 +1,10 @@
-/* Light theme tokens */
 html[data-theme="light"] {
   --ui-bg: #f6f7fb;
   --ui-fg: #0b1220;
   --ui-muted: #475569;
-
   --ui-surface: rgba(255, 255, 255, 0.70);
   --ui-surface-2: rgba(255, 255, 255, 0.92);
-
   --ui-border: rgba(15, 23, 42, 0.12);
-
   --ui-accent: #4f46e5;
   --ui-accent-2: #16a34a;
 }

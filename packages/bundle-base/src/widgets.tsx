@@ -1,29 +1,20 @@
-import type { FunctionComponent } from "preact";
 import type { UiRuntime } from "@repo/ui-kit";
 
-export interface HeroProps {
+export type HeroProps = {
   title: string;
   subtitle: string;
+  ui: UiRuntime;
   ctaHref?: string;
   ctaLabel?: string;
-  ui: UiRuntime;
-}
+};
 
-export const Hero: FunctionComponent<HeroProps> = (props) => {
-  const Button = props.ui.registry.primitives["Button"];
-
+export const Hero = ({ title, subtitle, ctaHref, ctaLabel = "Get started", ui }: HeroProps) => {
+  const Button = ui.registry.primitives.Button;
   return (
     <div class="ui-hero">
-      <h1>{props.title}</h1>
-      <p>{props.subtitle}</p>
-
-      {props.ctaHref && Button
-        ? (
-          <Button href={props.ctaHref} variant="primary">
-            {props.ctaLabel ?? "Get started"}
-          </Button>
-        )
-        : null}
+      <h1>{title}</h1>
+      <p>{subtitle}</p>
+      {ctaHref && Button && <Button href={ctaHref} variant="primary">{ctaLabel}</Button>}
     </div>
   );
 };

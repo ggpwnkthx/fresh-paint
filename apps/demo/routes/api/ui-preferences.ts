@@ -1,6 +1,5 @@
-import { uiKit } from "../../lib/ui.ts";
-
-type Ctx = { req: Request };
+import { define } from "@/lib/define.ts";
+import { uiKit } from "@/lib/ui.ts";
 
 type IncomingPrefs = {
   stack: string[];
@@ -21,8 +20,8 @@ function parseIncoming(v: unknown): IncomingPrefs | null {
   return { stack: r.stack, theme: r.theme, layout: r.layout };
 }
 
-export const handler = {
-  async POST(ctx: Ctx): Promise<Response> {
+export const handler = define.handlers({
+  async POST(ctx): Promise<Response> {
     let body: unknown;
     try {
       body = await ctx.req.json();
@@ -51,4 +50,4 @@ export const handler = {
 
     return Response.json({ ok: true }, { headers });
   },
-};
+});

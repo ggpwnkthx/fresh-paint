@@ -1,4 +1,3 @@
-/* Holiday overrides — loaded AFTER base and ocean if stacked above them. */
 .ui-card {
   border-color: color-mix(in oklab, var(--ui-accent), var(--ui-border) 75%);
   background:

@@ -1,7 +1,6 @@
-import { uiKit } from "../../../lib/ui.ts";
+import { define } from "@/lib/define.ts";
+import { uiKit } from "@/lib/ui.ts";
 
-type Ctx = { req: Request };
-
-export const handler = {
-  GET: (ctx: Ctx) => uiKit.cssProxy.handle(ctx.req),
-};
+export const handler = define.handlers({
+  GET: (ctx) => uiKit.cssProxy.handle(ctx.req),
+});
