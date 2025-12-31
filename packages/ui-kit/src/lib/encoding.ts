@@ -1,5 +1,4 @@
-const b64u = (s: string) =>
-  btoa(s).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+const b64u = (s: string) => btoa(s).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 
 const ub64 = (s: string) =>
   s.replaceAll("-", "+").replaceAll("_", "/") + "===".slice((s.length + 3) % 4);

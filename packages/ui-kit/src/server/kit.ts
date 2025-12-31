@@ -1,18 +1,13 @@
-import type {
-  BundleId,
-  ThemeId,
-  UiPreferences,
-  UiRegistry,
-  UiRuntime,
-} from "../types.ts";
+import type { BundleId, ThemeId, UiPreferences, UiRegistry, UiRuntime } from "../types.ts";
 import { toChoiceItems } from "../lib/primitives.ts";
-import { CssProxy } from "./css_proxy.ts";
-import { decodePrefsCookie, encodePrefsCookie, parseCookieHeader, setCookieHeader } from "./cookies.ts";
+import { CssProxy } from "./proxy.ts";
 import {
-  buildCatalogChoiceItems,
-  normalizeCatalog,
-  type UiCatalogEntry,
-} from "./catalog.ts";
+  decodePrefsCookie,
+  encodePrefsCookie,
+  parseCookieHeader,
+  setCookieHeader,
+} from "./cookies.ts";
+import { buildCatalogChoiceItems, normalizeCatalog, type UiCatalogEntry } from "./catalog.ts";
 import { collectCss, loadBundles, mergeRegistry, pickId, pickStack, proxyCss } from "./resolve.ts";
 
 export interface UiKitOptions {

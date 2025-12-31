@@ -15,8 +15,7 @@ export function addVary(headers: Headers, value: string): void {
   headers.set("vary", [...tokens, value].join(", "));
 }
 
-export const normalizePathname = (p: string): string =>
-  p === "/" ? "/" : p.replace(/\/+$/, "");
+export const normalizePathname = (p: string): string => p === "/" ? "/" : p.replace(/\/+$/, "");
 
 export const isUnderPath = (p: string, base: string): boolean =>
   p === base || p.startsWith(base + "/");

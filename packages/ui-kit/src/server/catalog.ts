@@ -1,7 +1,7 @@
 import type { BundleId, BundleLoader } from "../types.ts";
 import { cleanLabel, isRecord } from "../lib/primitives.ts";
 import type { ChoiceItem } from "../lib/primitives.ts";
-import { moduleBundle, type BundleImporter } from "../bundle/mod.ts";
+import { type BundleImporter, moduleBundle } from "../bundle/mod.ts";
 
 export type UiCatalogEntry =
   | BundleLoader

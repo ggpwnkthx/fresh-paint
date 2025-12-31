@@ -1,11 +1,6 @@
 import type { ComponentRegistry, CssResource, LayoutDef, ThemeDef, UiBundle } from "../types.ts";
 import { asString, isRecord } from "../lib/primitives.ts";
-import {
-  isComponentRegistry,
-  isCssResourceArray,
-  isLayoutMap,
-  isThemeMap,
-} from "./validators.ts";
+import { isComponentRegistry, isCssResourceArray, isLayoutMap, isThemeMap } from "./validators.ts";
 
 type UnknownRecord = Record<string, unknown>;
 type OptKey = Exclude<keyof UiBundle, "id" | "label">;

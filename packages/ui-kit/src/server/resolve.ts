@@ -1,12 +1,5 @@
-import type {
-  BundleId,
-  BundleLoader,
-  CssLink,
-  ThemeId,
-  UiBundle,
-  UiRegistry,
-} from "../types.ts";
-import type { CssProxy } from "./css_proxy.ts";
+import type { BundleId, BundleLoader, CssLink, ThemeId, UiBundle, UiRegistry } from "../types.ts";
+import type { CssProxy } from "./proxy.ts";
 
 export function pickStack(
   requested: BundleId[],

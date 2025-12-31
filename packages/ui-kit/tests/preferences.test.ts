@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import { parseUiPreferencesJson } from "../src/preferences.ts";
+import { parseUiPreferencesJson } from "../src/server/preferences.ts";
 
 Deno.test("parseUiPreferencesJson: accepts valid shape", () => {
   const r = parseUiPreferencesJson({ stack: ["a", "b"], theme: "light", layout: "app" });

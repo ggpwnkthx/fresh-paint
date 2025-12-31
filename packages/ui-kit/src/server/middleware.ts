@@ -60,7 +60,9 @@ export function createUiKitMiddleware<State extends UiState>(
   opts: UiKitMiddlewareOptions = {},
 ): FreshMiddleware<State> {
   const isServer = isUiKitServer(kitOrConfig);
-  const { kitOpts, mwOpts } = isServer ? { kitOpts: undefined, mwOpts: opts } : splitConfig(kitOrConfig);
+  const { kitOpts, mwOpts } = isServer
+    ? { kitOpts: undefined, mwOpts: opts }
+    : splitConfig(kitOrConfig);
 
   const kit: UiKitServer = isServer ? kitOrConfig : createUiKit(kitOpts!);
 

@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { h } from "preact";
-import { createUiKit } from "../src/kit.ts";
-import { defineBundle } from "../src/bundle.ts";
+import { createUiKit } from "../src/server/kit.ts";
+import { defineBundle } from "../src/bundle/mod.ts";
 
 Deno.test("UI kit merges registries in stack order (later overrides earlier)", async () => {
   const a = defineBundle({

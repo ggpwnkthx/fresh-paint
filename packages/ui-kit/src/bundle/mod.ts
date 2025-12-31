@@ -5,8 +5,7 @@ export type BundleImporter = string | (() => Promise<unknown>);
 
 export const defineBundle = <T extends UiBundle>(b: T): T => b;
 
-export const cssUrl = (importMetaUrl: string, path: string) =>
-  new URL(path, importMetaUrl).href;
+export const cssUrl = (importMetaUrl: string, path: string) => new URL(path, importMetaUrl).href;
 
 type LabeledBundleLoader = BundleLoader & { label?: string };
 

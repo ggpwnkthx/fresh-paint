@@ -9,8 +9,7 @@ export interface UiKitLike {
   setPreferencesCookie(headers: Headers, prefs: UiPreferences): void;
 }
 
-const bad = (error: string, status = 400) =>
-  Response.json({ ok: false, error }, { status });
+const bad = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
 
 export function parseUiPreferencesJson(
   body: unknown,

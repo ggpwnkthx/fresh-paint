@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { createUiKitMiddleware } from "../src/middleware.ts";
+import { createUiKitMiddleware } from "../src/server/middleware.ts";
 import type { UiPreferences, UiRuntime } from "../src/types.ts";
 
 function runtime(): UiRuntime {
