@@ -1,5 +1,6 @@
-import type { UiPreferences } from "./types.ts";
-import { asString, isRecord, isStringArray } from "./validation.ts";
+import type { UiPreferences } from "../types.ts";
+import { asString, isRecord, isStringArray } from "../lib/primitives.ts";
+import { base64UrlDecode, base64UrlEncode } from "../lib/encoding.ts";
 
 const te = new TextEncoder();
 const td = new TextDecoder();
@@ -9,33 +10,17 @@ export function parseCookieHeader(header: string | null): Record<string, string>
   for (const part of (header ?? "").split(";")) {
     const p = part.trim();
     if (!p) continue;
+
     const i = p.indexOf("=");
     const k = (i < 0 ? p : p.slice(0, i)).trim();
     if (!k) continue;
+
     out[k] = (i < 0 ? "" : p.slice(i + 1)).trim();
   }
   return out;
 }
 
-const b64u = (s: string) => btoa(s).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-const ub64 = (s: string) =>
-  s.replaceAll("-", "+").replaceAll("_", "/") + "===".slice((s.length + 3) % 4);
-
-export const base64UrlEncode = (bytes: Uint8Array): string => {
-  let bin = "";
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
-  return b64u(bin);
-};
-
-export const base64UrlDecode = (s: string): Uint8Array | null => {
-  try {
-    return Uint8Array.from(atob(ub64(s)), (c) => c.charCodeAt(0));
-  } catch {
-    return null;
-  }
-};
-
-export const encodePrefsCookie = (prefs: UiPreferences) =>
+export const encodePrefsCookie = (prefs: UiPreferences): string =>
   base64UrlEncode(te.encode(JSON.stringify(prefs)));
 
 export function decodePrefsCookie(value: string): UiPreferences | null {
@@ -53,6 +38,7 @@ export function decodePrefsCookie(value: string): UiPreferences | null {
   const stack = v.stack;
   const theme = asString(v.theme);
   const layout = asString(v.layout);
+
   return isStringArray(stack) && theme && layout ? { stack, theme, layout } : null;
 }
 

@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { h } from "preact";
-import { createUiKit } from "./kit.ts";
-import { defineBundle } from "./bundle.ts";
+import { createUiKit } from "../src/kit.ts";
+import { defineBundle } from "../src/bundle.ts";
 
 Deno.test("UI kit merges registries in stack order (later overrides earlier)", async () => {
   const a = defineBundle({
@@ -38,4 +38,7 @@ Deno.test("UI kit merges registries in stack order (later overrides earlier)", a
   const light = ui.registry.themes["light"];
   assert(light);
   assertEquals(light.label, "Light+");
+
+  assertEquals(ui.catalog.map((c) => c.id), ["a", "b"]);
+  assertEquals(ui.choices.themes.map((c) => c.id), ["light"]);
 });

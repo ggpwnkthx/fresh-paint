@@ -1,3 +1,5 @@
+import type { ChoiceItem } from "./choices.ts";
+import { toChoiceItems } from "./choices.ts";
 import type {
   BundleId,
   BundleLoader,
@@ -14,23 +16,72 @@ import {
   parseCookieHeader,
   setCookieHeader,
 } from "./cookies.ts";
+import { type BundleImporter, moduleBundle } from "./bundle.ts";
+import { isRecord } from "./validation.ts";
+
+export type UiCatalogEntry =
+  | BundleLoader
+  | BundleImporter
+  | { src: BundleLoader | BundleImporter; label?: string }
+  | readonly [BundleLoader | BundleImporter, string];
 
 export interface UiKitOptions {
-  catalog: Record<BundleId, BundleLoader>;
+  catalog: Record<BundleId, UiCatalogEntry>;
   defaults: UiPreferences;
   cookieName?: string;
   cssProxyBasePath?: string;
   allowFileCss?: boolean;
 }
 
+type LabeledBundleLoader = BundleLoader & { label?: string };
+const cleanLabel = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+const loaderLabel = (
+  v: unknown,
+) => (isRecord(v) ? cleanLabel((v as { label?: unknown }).label) : undefined);
+
+function normalizeEntry(entry: UiCatalogEntry): { src: BundleImporter; label?: string } {
+  if (Array.isArray(entry)) return { src: entry[0] as BundleImporter, label: cleanLabel(entry[1]) };
+  if (isRecord(entry) && "src" in entry) {
+    const src = (entry as { src?: unknown }).src;
+    if (typeof src !== "string" && typeof src !== "function") {
+      throw new Error("Invalid catalog entry: { src } must be a string or function");
+    }
+    return { src: src as BundleImporter, label: cleanLabel((entry as { label?: unknown }).label) };
+  }
+  if (typeof entry !== "string" && typeof entry !== "function") {
+    throw new Error("Invalid catalog entry");
+  }
+  return { src: entry as BundleImporter };
+}
+
+function normalizeCatalog(
+  raw: Record<BundleId, UiCatalogEntry>,
+): Record<BundleId, LabeledBundleLoader> {
+  const out: Record<BundleId, LabeledBundleLoader> = {};
+  for (const [id, entry] of Object.entries(raw)) {
+    const { src, label } = normalizeEntry(entry);
+    out[id] = moduleBundle(
+      src,
+      label ?? (typeof src === "function" ? loaderLabel(src) : undefined),
+    );
+  }
+  return out;
+}
+
+function buildCatalogChoiceItems(catalog: Record<BundleId, LabeledBundleLoader>): ChoiceItem[] {
+  return Object.entries(catalog).map(([id, loader]) => ({ id, label: loader.label ?? id }));
+}
+
 export function createUiKit({
-  catalog,
+  catalog: rawCatalog,
   defaults,
   cookieName = "ui",
   cssProxyBasePath = "/ui/css",
   allowFileCss = false,
 }: UiKitOptions) {
+  const catalog = normalizeCatalog(rawCatalog);
   const cssProxy = new CssProxy({ basePath: cssProxyBasePath, allowFileUrls: allowFileCss });
+  const catalogItems = buildCatalogChoiceItems(catalog);
 
   const resolve = async (req: Request): Promise<UiRuntime> => {
     const warnings: string[] = [];
@@ -46,7 +97,15 @@ export function createUiKit({
 
     const prefs: UiPreferences = { stack, theme, layout };
     const css = await proxyCss(cssProxy, collectCss(theme, stack, bundles, registry));
-    return { prefs, registry, css, warnings };
+
+    return {
+      prefs,
+      registry,
+      css,
+      warnings,
+      catalog: catalogItems,
+      choices: { themes: toChoiceItems(registry.themes), layouts: toChoiceItems(registry.layouts) },
+    };
   };
 
   const setPreferencesCookie = (headers: Headers, prefs: UiPreferences) =>
@@ -62,13 +121,13 @@ function pickStack(
   warnings: string[],
 ): BundleId[] {
   const clean = (ids: BundleId[]) => {
-    const seen = new Set<BundleId>();
     const out: BundleId[] = [];
+    const seen = new Set<BundleId>();
     for (const id of ids) {
       if (seen.has(id)) continue;
       seen.add(id);
-      if (!catalog[id]) warnings.push(`Unknown bundle id ignored: "${id}"`);
-      else out.push(id);
+      if (catalog[id]) out.push(id);
+      else warnings.push(`Unknown bundle id ignored: "${id}"`);
     }
     return out;
   };
@@ -79,41 +138,23 @@ function pickStack(
   return clean(fallback);
 }
 
-type LoadedBundle = {
-  id: BundleId;
-  bundle?: UiBundle;
-  warn?: string;
-};
-
 async function loadBundles(
   stack: BundleId[],
   catalog: Record<BundleId, BundleLoader>,
   warnings: string[],
 ): Promise<Partial<Record<BundleId, UiBundle>>> {
-  const loaded: LoadedBundle[] = await Promise.all(
-    stack.map(async (id): Promise<LoadedBundle> => {
+  const out: Partial<Record<BundleId, UiBundle>> = {};
+  await Promise.all(
+    stack.map(async (id) => {
       const loader = catalog[id];
-      if (!loader) {
-        // Should be prevented by pickStack(), but keep this for safety and for strict indexing.
-        return { id, warn: `Unknown bundle id ignored: "${id}"` };
-      }
-
+      if (!loader) return warnings.push(`Unknown bundle id ignored: "${id}"`);
       try {
-        return { id, bundle: await loader() };
+        out[id] = await loader();
       } catch (e) {
-        return {
-          id,
-          warn: `Failed to load bundle "${id}": ${(e as Error).message}`,
-        };
+        warnings.push(`Failed to load bundle "${id}": ${(e as Error).message}`);
       }
     }),
   );
-
-  const out: Partial<Record<BundleId, UiBundle>> = {};
-  for (const r of loaded) {
-    if (r.warn) warnings.push(r.warn);
-    if (r.bundle) out[r.id] = r.bundle;
-  }
   return out;
 }
 
@@ -122,18 +163,15 @@ function mergeRegistry(
   bundles: Partial<Record<BundleId, UiBundle>>,
 ): UiRegistry {
   const out: UiRegistry = { bundles: {}, themes: {}, layouts: {}, primitives: {}, widgets: {} };
-
   for (const id of stack) {
     const b = bundles[id];
     if (!b) continue;
-
     out.bundles[id] = b;
     if (b.themes) Object.assign(out.themes, b.themes);
     if (b.layouts) Object.assign(out.layouts, b.layouts);
     if (b.primitives) Object.assign(out.primitives, b.primitives);
     if (b.widgets) Object.assign(out.widgets, b.widgets);
   }
-
   return out;
 }
 
@@ -145,17 +183,14 @@ function pickId<T extends string>(
   warnings: string[],
 ): T {
   if (map[requested]) return requested;
-  if (map[fallback]) {
-    warnings.push(`Unknown ${kind} "${requested}", falling back to "${fallback}".`);
-    return fallback;
-  }
   const first = Object.keys(map)[0] as T | undefined;
-  if (first) {
-    warnings.push(`Unknown ${kind} "${requested}", falling back to "${first}".`);
-    return first;
-  }
-  warnings.push(`No ${kind}s registered; using "${requested}".`);
-  return requested;
+  const next = map[fallback] ? fallback : first;
+  warnings.push(
+    next
+      ? `Unknown ${kind} "${requested}", falling back to "${next}".`
+      : `No ${kind}s registered; using "${requested}".`,
+  );
+  return next ?? requested;
 }
 
 function themeLayers(theme: ThemeId, themes: UiRegistry["themes"]): ThemeId[] {
@@ -188,13 +223,11 @@ async function proxyCss(
 ): Promise<Array<{ href: string; media?: string; sourceUrl: string }>> {
   const out: Array<{ href: string; media?: string; sourceUrl: string }> = [];
   const seen = new Set<string>();
-
   for (const r of resources) {
     const { href } = await proxy.register(r.url);
     if (seen.has(href)) continue;
     seen.add(href);
     out.push({ href, media: r.media, sourceUrl: r.url });
   }
-
   return out;
 }

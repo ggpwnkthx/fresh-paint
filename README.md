@@ -8,11 +8,11 @@ This repo demonstrates a **runtime‑swappable** UI system for Fresh where users
 
 It includes:
 
-- `packages/ui-kit/` — the middleware + runtime registry + CSS proxy
-- `packages/bundle-base/` — base primitives, themes, layouts
-- `packages/bundle-ocean/` — overrides + additional theme/layout
-- `packages/bundle-holiday/` — overrides + additional theme/layout
-- `apps/demo/` — a Fresh app that wires everything together
+- `packages/ui-kit/` - the middleware + runtime registry + CSS proxy
+- `packages/bundle-base/` - base primitives, themes, layouts
+- `packages/bundle-ocean/` - overrides + additional theme/layout
+- `packages/bundle-holiday/` - overrides + additional theme/layout
+- `apps/demo/` - a Fresh app that wires everything together
 
 ## Quickstart
 

@@ -1,8 +1,16 @@
 {
+  "name": "@ggpwnkthx/fresh-paint",
   "workspace": [
     "./packages/*",
     "./apps/*"
   ],
+  "exports": {
+    ".": "./packages/ui-kit/mod.ts",
+
+    "./bundle/base": "./packages/bundle-base/mod.ts",
+    "./bundle/ocean": "./packages/bundle-ocean/mod.ts",
+    "./bundle/holiday": "./packages/bundle-holiday/mod.ts"
+  },
   "nodeModulesDir": "auto",
   "tasks": {
     "clean": "deno clean && rm -rf ./node_modules/",

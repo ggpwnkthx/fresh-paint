@@ -1,62 +1,50 @@
 import type { ComponentChildren, FunctionComponent } from "preact";
-import type { State } from "../lib/state.ts";
-import { CATALOG } from "../lib/catalog.ts";
-import PreferencesPicker from "../islands/PreferencesPicker.tsx";
+import { define } from "@/lib/define.ts";
+import PreferencesPicker from "@/islands/PreferencesPicker.tsx";
 
-type PageProps = {
-  state: State;
-};
-
-type HeroWidget = FunctionComponent<{
+type HeroProps = {
   title: string;
   subtitle: string;
   ui: unknown;
   ctaHref?: string;
   ctaLabel?: string;
-}>;
+};
+type CardProps = { title: string; children?: ComponentChildren };
 
-type CardPrimitive = FunctionComponent<{ title: string; children?: ComponentChildren }>;
+export default define.page(({ state }) => {
+  const ui = state.ui!;
+  const col = { gridColumn: "span 12" } as const;
 
-export default function Home(props: PageProps) {
-  const ui = props.state.ui;
-
-  const themes = Object.values(ui.registry.themes).map((t) => ({ id: t.id, label: t.label }));
-  const layouts = Object.values(ui.registry.layouts).map((l) => ({ id: l.id, label: l.label }));
-
-  const Hero = ui.registry.widgets["Hero"] as unknown as HeroWidget | undefined;
-  const Card = ui.registry.primitives["Card"] as unknown as CardPrimitive | undefined;
+  const Hero = ui.registry.widgets["Hero"] as FunctionComponent<HeroProps> | undefined;
+  const Card = ui.registry.primitives["Card"] as FunctionComponent<CardProps> | undefined;
 
   return (
     <div class="ui-grid">
-      <div style="grid-column: span 12;">
-        {Hero
-          ? (
-            <Hero
-              ui={ui}
-              title="Runtime bundle stacking"
-              subtitle="Reorder or disable bundles, swap themes and layouts, and watch the UI change—without code generation."
-              ctaHref="https://fresh.deno.dev"
-              ctaLabel="Fresh docs"
-            />
-          )
-          : null}
+      <div style={col}>
+        {Hero && (
+          <Hero
+            ui={ui}
+            title="Runtime paint layering"
+            subtitle="Reorder or disable layers, swap themes and layouts, and watch the UI repaint."
+          />
+        )}
       </div>
 
-      <div style="grid-column: span 12;">
+      <div style={col}>
         <PreferencesPicker
-          catalog={CATALOG.slice()}
+          catalog={ui.catalog}
           current={ui.prefs}
-          themes={themes}
-          layouts={layouts}
+          themes={ui.choices.themes}
+          layouts={ui.choices.layouts}
         />
       </div>
 
-      <div style="grid-column: span 12;">
+      <div style={col}>
         {Card
           ? (
             <Card title="What you’re looking at">
               <p>
-                The server merges registries from the selected bundle stack. CSS from each layer is
+                The server merges registries from the selected layer stack. CSS from each layer is
                 included in order, and later layers override earlier ones.
               </p>
               <p>
@@ -72,18 +60,14 @@ export default function Home(props: PageProps) {
           )}
       </div>
 
-      {ui.warnings.length > 0
-        ? (
-          <div style="grid-column: span 12;">
-            <div class="ui-card">
-              <h2>Warnings</h2>
-              <ul>
-                {ui.warnings.map((w, i) => <li key={`${i}:${w}`}>{w}</li>)}
-              </ul>
-            </div>
+      {ui.warnings.length > 0 && (
+        <div style={col}>
+          <div class="ui-card">
+            <h2>Warnings</h2>
+            <ul>{ui.warnings.map((w, i) => <li key={`${i}:${w}`}>{w}</li>)}</ul>
           </div>
-        )
-        : null}
+        </div>
+      )}
     </div>
   );
-}
+});

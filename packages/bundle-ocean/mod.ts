@@ -1,4 +1,4 @@
-import { cssUrl, defineBundle } from "@repo/ui-kit";
+import { cssUrl, defineBundle } from "@ggpwnkthx/fresh-paint";
 import { AppLayout } from "./src/layouts.tsx";
 import { Button } from "./src/primitives.tsx";
 

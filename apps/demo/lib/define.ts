@@ -1,5 +1,4 @@
 import { createDefine } from "fresh";
-import type { State } from "./state.ts";
+import type { State } from "@/routes/_middleware.ts";
 
-// Setup once, import everywhere.
 export const define = createDefine<State>();

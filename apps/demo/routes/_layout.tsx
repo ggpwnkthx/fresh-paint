@@ -1,20 +1,22 @@
-import type { ComponentChildren, FunctionComponent } from "npm:preact@^10";
-import type { State } from "../lib/state.ts";
-import type { LayoutComponentProps } from "@repo/ui-kit";
+import type { ComponentChildren, FunctionComponent } from "preact";
+import { define } from "@/lib/define.ts";
+import type { State } from "./_middleware.ts";
 
-type LayoutProps = {
-  children: ComponentChildren;
-  state: State;
-};
+type Ui = NonNullable<State["ui"]>;
+type LayoutProps = { children: ComponentChildren; ui: Ui };
 
-const FallbackLayout: FunctionComponent<LayoutComponentProps> = ({ children }) => (
-  <div style="padding: 24px;">{children}</div>
-);
+const Fallback: FunctionComponent<LayoutProps> = ({ children }) => <div class="p-6">{children}
+</div>;
 
-export default function Layout(props: LayoutProps) {
-  const ui = props.state.ui;
-  const def = ui.registry.layouts[ui.prefs.layout];
-  const LayoutImpl = def?.Layout ?? FallbackLayout;
+export default define.layout(({ state, Component }) => {
+  const ui = state.ui!;
+  const Layout = (ui.registry.layouts[ui.prefs.layout]?.Layout ?? Fallback) as FunctionComponent<
+    LayoutProps
+  >;
 
-  return <LayoutImpl ui={ui}>{props.children}</LayoutImpl>;
-}
+  return (
+    <Layout ui={ui}>
+      <Component />
+    </Layout>
+  );
+});

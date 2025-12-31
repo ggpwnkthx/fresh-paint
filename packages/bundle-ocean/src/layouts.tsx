@@ -1,4 +1,4 @@
-import type { LayoutComponentProps } from "@repo/ui-kit";
+import type { LayoutComponentProps } from "@ggpwnkthx/fresh-paint";
 
 export const AppLayout = ({ children, ui }: LayoutComponentProps) => {
   const Button = ui.registry.primitives.Button;
@@ -8,7 +8,7 @@ export const AppLayout = ({ children, ui }: LayoutComponentProps) => {
       <header class="ui-nav">
         <div class="ui-brand">
           <span>🌊</span>
-          <span>Ocean Layer</span>
+          <span>Ocean Paint Layer</span>
           <span class="ui-pill">ocean</span>
         </div>
         <div style="display:flex;gap:10px;align-items:center">

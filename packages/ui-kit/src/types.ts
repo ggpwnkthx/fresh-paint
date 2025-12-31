@@ -1,4 +1,5 @@
 import type { ComponentChildren, FunctionComponent, JSX } from "preact";
+import type { ChoiceItem } from "./lib/primitives.ts";
 
 export type BundleId = string;
 export type ThemeId = string;
@@ -65,8 +66,10 @@ export interface UiRuntime {
   registry: UiRegistry;
   css: CssLink[];
   warnings: string[];
+  catalog: readonly ChoiceItem[];
+  choices: { themes: readonly ChoiceItem[]; layouts: readonly ChoiceItem[] };
 }
 
 export type BundleLoader = () => Promise<UiBundle>;
-
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
+export type UiState = { ui?: UiRuntime };

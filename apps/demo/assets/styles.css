@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* App-local helpers (bundles define most visuals via CSS vars). */
 html, body {
   margin: 0;
   padding: 0;

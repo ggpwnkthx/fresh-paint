@@ -1,5 +1,5 @@
 {
-  "name": "@demo/bundle-holiday",
+  "name": "@ggpwnkthx/fresh-paint-bundle-holiday",
   "version": "0.1.0",
   "exports": "./mod.ts",
   "compilerOptions": {
@@ -9,7 +9,7 @@
     "jsxImportSource": "preact"
   },
   "imports": {
-    "@repo/ui-kit": "../ui-kit/mod.ts",
+    "@ggpwnkthx/fresh-paint": "../ui-kit/mod.ts",
     "preact": "npm:preact@^10"
   }
 }

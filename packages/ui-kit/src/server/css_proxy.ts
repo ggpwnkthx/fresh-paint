@@ -1,5 +1,5 @@
-import { fromFileUrl } from "@std/path";
-import { base64UrlEncode } from "./cookies.ts";
+import { fromFileUrl } from "jsr:@std/path@1.1.4";
+import { base64UrlEncode } from "../lib/encoding.ts";
 
 export interface CssProxyOptions {
   basePath: string;
@@ -8,6 +8,7 @@ export interface CssProxyOptions {
 }
 
 type RemoteEntry = { exp: number; status: number; headers: [string, string][]; body: Uint8Array };
+
 const te = new TextEncoder();
 const bad = (msg: string, status: number) => new Response(msg, { status });
 
@@ -25,15 +26,15 @@ export class CssProxy {
     this.remoteCacheSeconds = remoteCacheSeconds;
   }
 
-  href(id: string) {
+  href(id: string): string {
     return `${this.basePath}/${id}.css`;
   }
 
-  lookup(id: string) {
+  lookup(id: string): string | undefined {
     return this.#idToUrl.get(id);
   }
 
-  async register(sourceUrl: string) {
+  async register(sourceUrl: string): Promise<{ id: string; href: string }> {
     const id = await hashId(sourceUrl);
     const prev = this.#idToUrl.get(id);
     if (prev && prev !== sourceUrl) throw new Error("CSS proxy id collision");
@@ -61,9 +62,7 @@ export class CssProxy {
     ) return Promise.resolve(bad("Refusing to proxy a proxied CSS URL", 400));
 
     if (target.protocol === "file:") {
-      return this.allowFileUrls
-        ? this.#serveFile(target)
-        : Promise.resolve(bad("file: CSS not allowed", 403));
+      return this.allowFileUrls ? this.#serveFile(target) : Promise.resolve(bad("file: CSS not allowed", 403));
     }
     if (target.protocol === "http:" || target.protocol === "https:") {
       return this.#serveRemote(target.toString());
@@ -79,7 +78,8 @@ export class CssProxy {
         headers: { "content-type": "text/css; charset=utf-8", "cache-control": "no-cache" },
       });
     } catch (e) {
-      return bad(`Failed to read CSS file: ${(e as Error).message}`, 404);
+      const msg = e instanceof Error ? e.message : String(e);
+      return bad(`Failed to read CSS file: ${msg}`, 404);
     }
   }
 
@@ -109,7 +109,7 @@ export class CssProxy {
   }
 }
 
-async function hashId(input: string) {
+async function hashId(input: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", te.encode(input));
   return base64UrlEncode(new Uint8Array(digest).subarray(0, 12));
 }

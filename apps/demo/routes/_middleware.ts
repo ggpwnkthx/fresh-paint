@@ -1,10 +1,18 @@
-import { createDefine } from "fresh";
-import { uiKit } from "../lib/ui.ts";
-import type { State } from "../lib/state.ts";
+import { define } from "@/lib/define.ts";
+import { createUiKitMiddleware, type UiState } from "@ggpwnkthx/fresh-paint";
 
-const define = createDefine<State>();
+export type State = UiState;
 
-export const handler = define.middleware(async (ctx) => {
-  ctx.state.ui = await uiKit.resolve(ctx.req);
-  return await ctx.next();
-});
+export default define.middleware(
+  createUiKitMiddleware<State>({
+    catalog: {
+      base: { src: () => import("@ggpwnkthx/fresh-paint/bundle/base"), label: "Base" },
+      ocean: { src: () => import("@ggpwnkthx/fresh-paint/bundle/ocean"), label: "Ocean" },
+      holiday: { src: () => import("@ggpwnkthx/fresh-paint/bundle/holiday"), label: "Holiday" },
+    },
+    defaults: { stack: ["base", "ocean", "holiday"], theme: "light", layout: "app" },
+    cookieName: "ui",
+    cssProxyBasePath: "/ui/css",
+    allowFileCss: true,
+  }),
+);

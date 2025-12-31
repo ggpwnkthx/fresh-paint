@@ -1,4 +1,4 @@
-import { cssUrl, defineBundle } from "@repo/ui-kit";
+import { cssUrl, defineBundle } from "@ggpwnkthx/fresh-paint";
 import { MarketingLayout } from "./src/layouts.tsx";
 import { Hero } from "./src/widgets.tsx";
 

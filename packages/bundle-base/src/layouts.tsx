@@ -1,5 +1,5 @@
 import type { ComponentChildren } from "preact";
-import type { LayoutComponentProps } from "@repo/ui-kit";
+import type { LayoutComponentProps } from "@ggpwnkthx/fresh-paint";
 
 const Pill = ({ children }: { children: ComponentChildren }) => (
   <span class="ui-pill">{children}</span>
@@ -29,8 +29,8 @@ export const AppLayout = ({ children, ui }: LayoutComponentProps) => {
       header={
         <>
           <div class="ui-brand">
-            <span>🧩</span>
-            <span>Fresh UI Bundles</span>
+            <span>🎨</span>
+            <span>Fresh Paint</span>
             <Pill>base</Pill>
           </div>
           <div style="display:flex;gap:10px;align-items:center">

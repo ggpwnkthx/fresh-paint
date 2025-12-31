@@ -1,12 +1,10 @@
 {
-  "name": "@demo/ui-kit",
   "version": "0.1.0",
   "imports": {
     "@std/path": "jsr:@std/path@^1",
     "@std/assert": "jsr:@std/assert@^1",
     "preact": "npm:preact@^10"
   },
-  "exports": "./mod.ts",
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,

@@ -1,4 +1,4 @@
-import type { UiRuntime } from "@repo/ui-kit";
+import type { UiRuntime } from "@ggpwnkthx/fresh-paint";
 
 export type HeroProps = {
   title: string;

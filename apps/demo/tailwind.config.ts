@@ -1,6 +1,1 @@
-export default {
-  content: [
-    "./routes/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-  ],
-};
+export default { content: ["./{routes,components}/**/*.{ts,tsx}"] };
