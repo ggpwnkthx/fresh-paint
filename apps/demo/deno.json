@@ -13,7 +13,8 @@
     "@fresh/plugin-vite": "jsr:@fresh/plugin-vite@^1",
     "@tailwindcss/vite": "npm:@tailwindcss/vite@^4",
     "vite": "npm:vite@^7",
-    "tailwindcss": "npm:tailwindcss@^4"
+    "tailwindcss": "npm:tailwindcss@^4",
+    "@watcher": "../../watcher.ts"
   },
   "tasks": {
     "dev": "deno run -A vite",

@@ -32,9 +32,8 @@ const BTN = {
   primary: { type: "button" as const, class: "ui-btn", "data-variant": "primary" as const },
 } as const;
 
-const onSelect =
-  (set: (v: string) => void) => (e: Event) =>
-    set((e.currentTarget as HTMLSelectElement | null)?.value ?? "");
+const onSelect = (set: (v: string) => void) => (e: Event) =>
+  set((e.currentTarget as HTMLSelectElement | null)?.value ?? "");
 
 function arraysEqual(a: readonly string[], b: readonly string[]): boolean {
   if (a.length !== b.length) return false;
@@ -95,8 +94,7 @@ export function PreferencesPicker({
   }, [available, addId]);
 
   const currentPriority = useMemo(() => toPriority(current.stack), [current.stack]);
-  const dirty =
-    !arraysEqual(priority, currentPriority) ||
+  const dirty = !arraysEqual(priority, currentPriority) ||
     theme !== current.theme ||
     layout !== current.layout;
 
@@ -186,48 +184,49 @@ export function PreferencesPicker({
           Higher priority is at the top (it overrides items below).
         </div>
 
-        {priority.length === 0 ? (
-          <div class="ui-pill" style="margin-top:10px">No bundles enabled</div>
-        ) : (
-          <div style={S.list}>
-            {priority.map((id, idx) => (
-              <div key={id} style={S.item}>
-                <span class="ui-pill" title={id}>
-                  {idx === 0 ? "Priority: " : ""}{bundleLabel(id)}
-                </span>
+        {priority.length === 0
+          ? <div class="ui-pill" style="margin-top:10px">No bundles enabled</div>
+          : (
+            <div style={S.list}>
+              {priority.map((id, idx) => (
+                <div key={id} style={S.item}>
+                  <span class="ui-pill" title={id}>
+                    {idx === 0 ? "Priority: " : ""}
+                    {bundleLabel(id)}
+                  </span>
 
-                <span style={S.actions}>
-                  <button
-                    {...BTN.ghost}
-                    disabled={saving || idx === 0}
-                    onClick={() => move(id, -1)}
-                    title="Move up"
-                    aria-label="Move up"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    {...BTN.ghost}
-                    disabled={saving || idx === priority.length - 1}
-                    onClick={() => move(id, 1)}
-                    title="Move down"
-                    aria-label="Move down"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    {...BTN.ghost}
-                    disabled={saving}
-                    onClick={() => disable(id)}
-                    title="Disable"
-                  >
-                    Disable
-                  </button>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+                  <span style={S.actions}>
+                    <button
+                      {...BTN.ghost}
+                      disabled={saving || idx === 0}
+                      onClick={() => move(id, -1)}
+                      title="Move up"
+                      aria-label="Move up"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      {...BTN.ghost}
+                      disabled={saving || idx === priority.length - 1}
+                      onClick={() => move(id, 1)}
+                      title="Move down"
+                      aria-label="Move down"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      {...BTN.ghost}
+                      disabled={saving}
+                      onClick={() => disable(id)}
+                      title="Disable"
+                    >
+                      Disable
+                    </button>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
         <div style={S.addRow}>
           <label class="ui-pill">
@@ -256,7 +255,7 @@ export function PreferencesPicker({
 
       <div style={S.footer}>
         <button {...BTN.primary} disabled={saving || !dirty} onClick={apply}>
-          {saving ? "Applying…" : "Apply"}
+          {saving ? "Applying..." : "Apply"}
         </button>
 
         <button {...BTN.ghost} disabled={saving || !dirty} onClick={reset}>

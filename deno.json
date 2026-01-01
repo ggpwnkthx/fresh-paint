@@ -4,6 +4,9 @@
     "./packages/*",
     "./apps/*"
   ],
+  "imports": {
+    "vite": "npm:vite@^7"
+  },
   "exports": {
     ".": "./packages/ui-kit/mod.ts",
 
