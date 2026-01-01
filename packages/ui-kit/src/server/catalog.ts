@@ -1,6 +1,7 @@
 import type { BundleId, BundleLoader } from "../types.ts";
-import { cleanLabel, isRecord } from "../lib/primitives.ts";
+import { cleanLabel, isObjectLike, isRecord, sortChoiceItems } from "../lib/primitives.ts";
 import type { ChoiceItem } from "../lib/primitives.ts";
+import { UiKitError } from "../lib/errors.ts";
 import { type BundleImporter, moduleBundle } from "../bundle/mod.ts";
 
 export type UiCatalogEntry =
@@ -11,48 +12,59 @@ export type UiCatalogEntry =
 
 type LabeledBundleLoader = BundleLoader & { label?: string };
 
-const loaderLabel = (v: unknown): string | undefined => {
-  if (!isRecord(v)) return undefined;
+function loaderLabel(v: unknown): string | undefined {
+  if (!isObjectLike(v)) return undefined;
   return cleanLabel((v as { label?: unknown }).label);
-};
+}
 
-function normalizeEntry(entry: UiCatalogEntry): { src: BundleImporter; label?: string } {
+function isImporter(v: unknown): v is BundleImporter {
+  return typeof v === "string" || typeof v === "function";
+}
+
+function invalidEntry(id: string, msg: string): UiKitError {
+  return new UiKitError("E_CATALOG_INVALID", `Invalid catalog entry for "${id}": ${msg}`);
+}
+
+function normalizeCatalogEntry(
+  id: string,
+  entry: UiCatalogEntry,
+): { src: BundleImporter; label?: string } {
   if (Array.isArray(entry)) {
     const [src, label] = entry;
-    return { src: src as BundleImporter, label: cleanLabel(label) };
+    if (!isImporter(src)) throw invalidEntry(id, "tuple src must be a string or function");
+    return { src, label: cleanLabel(label) };
   }
 
   if (isRecord(entry) && "src" in entry) {
     const src = (entry as { src?: unknown }).src;
-    if (typeof src !== "string" && typeof src !== "function") {
-      throw new Error("Invalid catalog entry: { src } must be a string or function");
-    }
-    return { src: src as BundleImporter, label: cleanLabel((entry as { label?: unknown }).label) };
+    if (!isImporter(src)) throw invalidEntry(id, "{ src } must be a string or function");
+    return { src, label: cleanLabel((entry as { label?: unknown }).label) };
   }
 
-  if (typeof entry !== "string" && typeof entry !== "function") {
-    throw new Error("Invalid catalog entry");
+  if (!isImporter(entry)) {
+    throw invalidEntry(id, "must be a string, function, tuple, or { src } object");
   }
 
-  return { src: entry as BundleImporter };
+  return { src: entry };
 }
 
 export function normalizeCatalog(
   raw: Record<BundleId, UiCatalogEntry>,
 ): Record<BundleId, LabeledBundleLoader> {
   const out: Record<BundleId, LabeledBundleLoader> = {};
+
   for (const [id, entry] of Object.entries(raw)) {
-    const { src, label } = normalizeEntry(entry);
-    out[id] = moduleBundle(
-      src,
-      label ?? (typeof src === "function" ? loaderLabel(src) : undefined),
-    );
+    const { src, label } = normalizeCatalogEntry(id, entry);
+    const inferred = label ?? (typeof src === "function" ? loaderLabel(src) : undefined);
+    out[id] = moduleBundle(src, inferred);
   }
+
   return out;
 }
 
 export function buildCatalogChoiceItems(
   catalog: Record<BundleId, LabeledBundleLoader>,
 ): ChoiceItem[] {
-  return Object.entries(catalog).map(([id, loader]) => ({ id, label: loader.label ?? id }));
+  const items = Object.entries(catalog).map(([id, loader]) => ({ id, label: loader.label ?? id }));
+  return sortChoiceItems(items);
 }

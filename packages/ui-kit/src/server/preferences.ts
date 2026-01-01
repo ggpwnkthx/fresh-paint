@@ -17,9 +17,9 @@ export function parseUiPreferencesJson(
 ): Result<UiPreferences> {
   if (!isRecord(body)) return { ok: false, error: "Invalid JSON" };
 
-  const stack = body.stack;
-  const theme = asString(body.theme)?.trim();
-  const layout = asString(body.layout)?.trim();
+  const stack = (body as { stack?: unknown }).stack;
+  const theme = asString((body as { theme?: unknown }).theme)?.trim();
+  const layout = asString((body as { layout?: unknown }).layout)?.trim();
 
   if (!isStringArray(stack) || !theme || !layout) {
     return { ok: false, error: "Expected { stack: string[], theme: string, layout: string }" };

@@ -8,6 +8,8 @@ export default defineConfig({
   plugins: [
     fresh({ serverEntry: "./main.tsx" }),
     tailwindcss(),
-    watchWorkspace({ paths: [resolve(fromFileUrl(new URL(".", import.meta.url)), "../../packages/")] }),
+    watchWorkspace({
+      paths: [resolve(fromFileUrl(new URL(".", import.meta.url)), "../../packages/")],
+    }),
   ],
 });

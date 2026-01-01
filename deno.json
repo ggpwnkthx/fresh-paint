@@ -20,7 +20,7 @@
     "fmt": "deno fmt",
     "lint": "deno lint",
     "test": "deno test -A",
-    "check": "deno task fmt && deno task lint && deno check && deno task test",
+    "check": "deno task clean && deno task fmt && deno task lint && deno check && deno task test",
     "dev": "cd apps/demo && deno task dev",
     "build": "cd apps/demo && deno task build",
     "start": "cd apps/demo && deno task start"

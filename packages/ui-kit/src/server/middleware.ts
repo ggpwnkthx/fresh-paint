@@ -1,5 +1,6 @@
 import type { UiRuntime, UiState } from "../types.ts";
 import { addVary, isUnderPath, methodNotAllowed, normalizePathname } from "../lib/http.ts";
+import { isRecord } from "../lib/primitives.ts";
 import { handleUiPreferencesPost, type UiKitLike } from "./preferences.ts";
 import { createUiKit, type UiKitOptions } from "./kit.ts";
 
@@ -31,9 +32,8 @@ export interface UiKitMiddlewareOptions {
 export type UiKitMiddlewareConfig = UiKitOptions & UiKitMiddlewareOptions;
 
 function isUiKitServer(v: unknown): v is UiKitServer {
-  if (typeof v !== "object" || v === null) return false;
+  if (!isRecord(v)) return false;
   const r = v as Partial<UiKitServer>;
-
   return typeof r.resolve === "function" &&
     typeof r.setPreferencesCookie === "function" &&
     typeof r.cssProxy?.basePath === "string" &&
@@ -46,6 +46,11 @@ function splitConfig(config: UiKitMiddlewareConfig) {
     kitOpts: kitOpts as UiKitOptions,
     mwOpts: { preferencesEndpoint, maxStack, skipResolve } as UiKitMiddlewareOptions,
   };
+}
+
+function clampInt(v: unknown, fallback: number, min: number, max: number): number {
+  const n = typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : fallback;
+  return Math.min(max, Math.max(min, n));
 }
 
 export function createUiKitMiddleware<State extends UiState>(
@@ -67,7 +72,7 @@ export function createUiKitMiddleware<State extends UiState>(
   const kit: UiKitServer = isServer ? kitOrConfig : createUiKit(kitOpts!);
 
   const endpoint = normalizePathname(mwOpts.preferencesEndpoint ?? "/api/ui-preferences");
-  const maxStack = mwOpts.maxStack ?? 20;
+  const maxStack = clampInt(mwOpts.maxStack, 20, 1, 200);
   const skipResolve = mwOpts.skipResolve ?? defaultSkipResolve;
   const cssBase = normalizePathname(kit.cssProxy.basePath);
 

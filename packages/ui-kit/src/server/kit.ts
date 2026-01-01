@@ -1,14 +1,13 @@
 import type { BundleId, ThemeId, UiPreferences, UiRegistry, UiRuntime } from "../types.ts";
 import { toChoiceItems } from "../lib/primitives.ts";
-import { CssProxy } from "./proxy.ts";
-import {
-  decodePrefsCookie,
-  encodePrefsCookie,
-  parseCookieHeader,
-  setCookieHeader,
-} from "./cookies.ts";
 import { buildCatalogChoiceItems, normalizeCatalog, type UiCatalogEntry } from "./catalog.ts";
-import { collectCss, loadBundles, mergeRegistry, pickId, pickStack, proxyCss } from "./resolve.ts";
+import { isCookieToken, setCookieHeader } from "./cookies/set.ts";
+import { parseCookieHeader } from "./cookies/parse.ts";
+import { decodePrefsCookie, encodePrefsCookie } from "./cookies/prefs.ts";
+import { CssProxy } from "./proxy/css.ts";
+import { collectCss, proxyCss } from "./resolve/css.ts";
+import { loadBundles, mergeRegistry, pickId } from "./resolve/registry.ts";
+import { pickStack } from "./resolve/stack.ts";
 
 export interface UiKitOptions {
   catalog: Record<BundleId, UiCatalogEntry>;
@@ -18,6 +17,14 @@ export interface UiKitOptions {
   allowFileCss?: boolean;
 }
 
+function assertValidDefaults(d: UiPreferences): void {
+  if (!Array.isArray(d.stack) || d.stack.some((s) => typeof s !== "string" || !s.trim())) {
+    throw new Error(`Invalid defaults.stack`);
+  }
+  if (typeof d.theme !== "string" || !d.theme.trim()) throw new Error(`Invalid defaults.theme`);
+  if (typeof d.layout !== "string" || !d.layout.trim()) throw new Error(`Invalid defaults.layout`);
+}
+
 export function createUiKit({
   catalog: rawCatalog,
   defaults,
@@ -25,6 +32,9 @@ export function createUiKit({
   cssProxyBasePath = "/ui/css",
   allowFileCss = false,
 }: UiKitOptions) {
+  assertValidDefaults(defaults);
+  if (!isCookieToken(cookieName)) throw new Error(`Invalid cookieName: "${cookieName}"`);
+
   const catalog = normalizeCatalog(rawCatalog);
   const cssProxy = new CssProxy({ basePath: cssProxyBasePath, allowFileUrls: allowFileCss });
   const catalogItems = buildCatalogChoiceItems(catalog);

@@ -1,6 +1,6 @@
 # Fresh Paint (monorepo)
 
-Fresh Paint is a small UI "bundle stack" system for Deno + Preact apps.
+Fresh Paint is a small UI "bundle stack" system for Deno Fresh apps.
 
 It's split into:
 

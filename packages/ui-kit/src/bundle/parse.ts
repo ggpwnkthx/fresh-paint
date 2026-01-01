@@ -1,43 +1,64 @@
 import type { ComponentRegistry, CssResource, LayoutDef, ThemeDef, UiBundle } from "../types.ts";
-import { asString, isRecord } from "../lib/primitives.ts";
+import { cleanString, isRecord } from "../lib/primitives.ts";
+import { UiKitError, uiKitError } from "../lib/errors.ts";
 import { isComponentRegistry, isCssResourceArray, isLayoutMap, isThemeMap } from "./validators.ts";
 
 type UnknownRecord = Record<string, unknown>;
 type OptKey = Exclude<keyof UiBundle, "id" | "label">;
 
-export function coerceUiBundle(modOrBundle: unknown, name: string): UiBundle {
-  if (!isRecord(modOrBundle)) throw new Error(`Bundle "${name}" did not evaluate to an object.`);
+const bundleError = (name: string, msg: string, cause?: unknown): UiKitError =>
+  uiKitError("E_BUNDLE_INVALID", `Bundle "${name}": ${msg}`, cause);
 
-  const exp = ("bundle" in modOrBundle || "default" in modOrBundle)
-    ? (modOrBundle as UnknownRecord).bundle ?? (modOrBundle as UnknownRecord).default
+function pickExport(modOrBundle: UnknownRecord): unknown {
+  // Accept: { bundle }, { default }, or the object itself.
+  return ("bundle" in modOrBundle || "default" in modOrBundle)
+    ? (modOrBundle.bundle ?? modOrBundle.default)
     : modOrBundle;
+}
 
-  if (!isRecord(exp)) throw new Error(`Bundle "${name}" must export { bundle } or default.`);
-  return parseUiBundle(exp, name);
+function reqString(b: UnknownRecord, key: "id" | "label", name: string): string {
+  const s = cleanString(b[key]);
+  if (!s) throw bundleError(name, `missing required "${key}" string.`, b[key]);
+  return s;
+}
+
+const OPT_VALIDATORS = {
+  globalCss: isCssResourceArray,
+  themes: isThemeMap,
+  layouts: isLayoutMap,
+  primitives: isComponentRegistry,
+  widgets: isComponentRegistry,
+} satisfies Record<
+  OptKey,
+  (v: unknown) => v is
+    | CssResource[]
+    | Record<string, ThemeDef>
+    | Record<string, LayoutDef>
+    | ComponentRegistry
+>;
+
+export function coerceUiBundle(modOrBundle: unknown, name: string): UiBundle {
+  if (!isRecord(modOrBundle)) {
+    throw bundleError(name, "did not evaluate to an object.", modOrBundle);
+  }
+
+  const exp = pickExport(modOrBundle as UnknownRecord);
+  if (!isRecord(exp)) throw bundleError(name, "must export { bundle } or default object.", exp);
+
+  return parseUiBundle(exp as UnknownRecord, name);
 }
 
 export function parseUiBundle(b: UnknownRecord, name: string): UiBundle {
-  const id = asString(b.id);
-  const label = asString(b.label);
-  if (!id || !label) throw new Error(`Bundle "${name}" is missing { id, label } strings.`);
+  const out: UiBundle = { id: reqString(b, "id", name), label: reqString(b, "label", name) };
+  const target = out as unknown as Record<OptKey, unknown>;
 
-  const out: UiBundle = { id, label };
-
-  const set = <K extends OptKey>(
-    k: K,
-    ok: (v: unknown) => v is NonNullable<UiBundle[K]>,
-  ) => {
-    const v = b[k];
-    if (v === undefined) return;
-    if (!ok(v)) throw new Error(`Bundle "${name}" has invalid ${k}.`);
-    out[k] = v;
-  };
-
-  set("globalCss", (v: unknown): v is CssResource[] => isCssResourceArray(v));
-  set("themes", (v: unknown): v is Record<string, ThemeDef> => isThemeMap(v));
-  set("layouts", (v: unknown): v is Record<string, LayoutDef> => isLayoutMap(v));
-  set("primitives", (v: unknown): v is ComponentRegistry => isComponentRegistry(v));
-  set("widgets", (v: unknown): v is ComponentRegistry => isComponentRegistry(v));
+  for (const k in OPT_VALIDATORS) {
+    const key = k as OptKey;
+    const v = b[key];
+    if (v === undefined) continue;
+    if (!OPT_VALIDATORS[key](v)) throw bundleError(name, `invalid "${key}".`, v);
+    target[key] = v;
+  }
 
   return out;
 }
